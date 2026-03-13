@@ -26,7 +26,7 @@ export default function BoardGrid({
   }
 
   return (
-    <View className="flex-1 p-2">
+    <View className="flex-1 px-3 py-2">
       {rows.map((row, rowIdx) => (
         <View key={rowIdx} className="flex-row flex-1">
           {row.map((btn) => (

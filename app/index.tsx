@@ -54,13 +54,13 @@ export default function HomeScreen() {
   };
 
   return (
-    <View className="flex-1 bg-[#0f0d2e] px-4 pt-4">
-      <Text className="text-white text-2xl font-bold mb-4">
+    <View className="flex-1 bg-gray-100 px-4 pt-4">
+      <Text className="text-gray-900 text-2xl font-bold mb-4">
         My Soundboards
       </Text>
 
       {isLoading ? (
-        <Text className="text-gray-400">Loading...</Text>
+        <Text className="text-gray-500">Loading...</Text>
       ) : (
         <FlatList
           data={boards}
@@ -69,15 +69,16 @@ export default function HomeScreen() {
             <Pressable
               onPress={() => handleOpen(item)}
               onLongPress={() => handleDelete(item)}
-              className="bg-indigo-900 rounded-xl p-4 mb-3"
-              style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+              className="bg-white rounded-xl p-4 mb-3"
+              style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 2 })}
             >
-              <Text className="text-white text-lg font-semibold">
+              <Text className="text-gray-900 text-lg font-semibold">
                 {item.name}
               </Text>
-              <Text className="text-indigo-300 text-sm mt-1">
+              <Text className="text-gray-500 text-sm mt-1">
                 {item.buttons.filter((b) => b.soundUri).length} / {item.buttons.length} sounds
               </Text>
+              <Text className="text-gray-400 text-xs mt-1">Hold to delete</Text>
             </Pressable>
           )}
           ListEmptyComponent={
@@ -96,13 +97,13 @@ export default function HomeScreen() {
           placeholderTextColor="#6b7280"
           autoFocus
           onSubmitEditing={handleCreate}
-          className="bg-gray-800 text-white rounded-xl px-4 py-3 mb-3"
+          className="bg-white text-gray-900 rounded-xl px-4 py-3 mb-3 border border-gray-300"
         />
       )}
 
       <Pressable
         onPress={handleCreate}
-        className="bg-indigo-600 rounded-xl py-4 items-center mb-6"
+        className="bg-teal-500 rounded-xl py-4 items-center mb-6"
         style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
       >
         <Text className="text-white font-bold text-lg">+ Create Board</Text>

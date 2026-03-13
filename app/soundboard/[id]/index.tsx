@@ -135,14 +135,14 @@ export default function SoundboardScreen() {
 
   if (!activeBoard) {
     return (
-      <View className="flex-1 bg-[#0f0d2e] items-center justify-center">
-        <Text className="text-gray-400">Loading board...</Text>
+      <View className="flex-1 bg-gray-100 items-center justify-center">
+        <Text className="text-gray-500">Loading board...</Text>
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-[#0f0d2e]">
+    <View className="flex-1 bg-gray-100">
       <Stack.Screen options={{ title: activeBoard.name }} />
       <BoardGrid
         buttons={activeBoard.buttons}

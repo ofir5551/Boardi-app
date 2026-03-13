@@ -160,28 +160,28 @@ export default function EditButtonScreen() {
 
   if (!button) {
     return (
-      <View className="flex-1 bg-[#0f0d2e] items-center justify-center">
-        <Text className="text-gray-400">Button not found</Text>
+      <View className="flex-1 bg-gray-100 items-center justify-center">
+        <Text className="text-gray-500">Button not found</Text>
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-[#0f0d2e] px-4 pt-6">
+    <View className="flex-1 bg-gray-100 px-4 pt-6">
       <Stack.Screen options={{ title: "Edit Button" }} />
 
-      <Text className="text-gray-400 text-sm mb-1">Button Name</Text>
+      <Text className="text-gray-500 text-sm mb-1">Button Name</Text>
       <TextInput
         value={label}
         onChangeText={setLabel}
         placeholder="Enter name..."
-        placeholderTextColor="#6b7280"
-        className="bg-gray-800 text-white rounded-xl px-4 py-3 mb-6"
+        placeholderTextColor="#9ca3af"
+        className="bg-white text-gray-900 rounded-xl px-4 py-3 mb-6 border border-gray-300"
       />
 
       <Pressable
         onPress={handleReplace}
-        className="bg-indigo-600 rounded-xl py-4 items-center mb-3"
+        className="bg-teal-500 rounded-xl py-4 items-center mb-3"
         style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
       >
         <Text className="text-white font-bold">Replace Sound</Text>
@@ -190,7 +190,7 @@ export default function EditButtonScreen() {
       <Pressable
         onPress={handleRecord}
         className={`rounded-xl py-4 items-center mb-3 ${
-          isRecording ? "bg-red-600" : "bg-emerald-600"
+          isRecording ? "bg-red-500" : "bg-emerald-500"
         }`}
         style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
       >
@@ -201,18 +201,18 @@ export default function EditButtonScreen() {
 
       <Pressable
         onPress={handleRemove}
-        className="bg-red-900 rounded-xl py-4 items-center mb-6"
+        className="bg-red-100 rounded-xl py-4 items-center mb-6"
         style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
       >
-        <Text className="text-red-300 font-bold">Remove Sound</Text>
+        <Text className="text-red-600 font-bold">Remove Sound</Text>
       </Pressable>
 
       <Pressable
         onPress={handleSave}
-        className="bg-gray-700 rounded-xl py-4 items-center"
+        className="bg-gray-200 rounded-xl py-4 items-center"
         style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
       >
-        <Text className="text-white font-bold">Save & Back</Text>
+        <Text className="text-gray-800 font-bold">Save & Back</Text>
       </Pressable>
     </View>
   );
