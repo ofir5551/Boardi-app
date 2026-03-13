@@ -7,7 +7,6 @@ type Props = {
   buttons: SoundButtonType[];
   onButtonPress: (button: SoundButtonType) => void;
   onButtonLongPress: (button: SoundButtonType) => void;
-  onButtonPressIn?: (button: SoundButtonType) => void;
   onButtonPressOut?: (button: SoundButtonType) => void;
   isRecordingButtonId?: string | null;
 };
@@ -16,7 +15,6 @@ export default function BoardGrid({
   buttons,
   onButtonPress,
   onButtonLongPress,
-  onButtonPressIn,
   onButtonPressOut,
   isRecordingButtonId,
 }: Props) {
@@ -35,7 +33,6 @@ export default function BoardGrid({
               button={btn}
               onPress={() => onButtonPress(btn)}
               onLongPress={() => onButtonLongPress(btn)}
-              onPressIn={onButtonPressIn ? () => onButtonPressIn(btn) : undefined}
               onPressOut={onButtonPressOut ? () => onButtonPressOut(btn) : undefined}
               isRecording={isRecordingButtonId === btn.id}
             />
