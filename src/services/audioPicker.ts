@@ -1,5 +1,5 @@
 import * as DocumentPicker from "expo-document-picker";
-import { Audio } from "expo-av";
+import { createAudioPlayer } from "expo-audio";
 import { Alert } from "react-native";
 import * as fileService from "./fileService";
 import { generateId } from "@/src/utils/id";
@@ -10,6 +10,29 @@ import {
 } from "@/src/constants/limits";
 
 type PickResult = { uri: string; label: string } | null;
+
+function getPlayerDuration(uri: string): Promise<number | null> {
+  return new Promise((resolve) => {
+    const player = createAudioPlayer({ uri });
+    let done = false;
+    const sub = player.addListener("playbackStatusUpdate", (status: any) => {
+      if (!done && typeof status.duration === "number" && status.duration > 0) {
+        done = true;
+        sub.remove();
+        player.remove();
+        resolve(status.duration); // seconds
+      }
+    });
+    setTimeout(() => {
+      if (!done) {
+        done = true;
+        sub.remove();
+        player.remove();
+        resolve(null);
+      }
+    }, 3000);
+  });
+}
 
 export async function pickAndValidateAudio(): Promise<PickResult> {
   const result = await DocumentPicker.getDocumentAsync({
@@ -29,15 +52,8 @@ export async function pickAndValidateAudio(): Promise<PickResult> {
   const filename = `${generateId()}${ext}`;
   const uri = fileService.copyAudioFile(asset.uri, filename);
 
-  const { sound } = await Audio.Sound.createAsync({ uri });
-  const status = await sound.getStatusAsync();
-  await sound.unloadAsync();
-
-  if (
-    status.isLoaded &&
-    status.durationMillis &&
-    status.durationMillis > MAX_AUDIO_DURATION_S * 1000
-  ) {
+  const durationSeconds = await getPlayerDuration(uri);
+  if (durationSeconds !== null && durationSeconds > MAX_AUDIO_DURATION_S) {
     fileService.deleteAudioFile(uri);
     Alert.alert("Too long", `Audio must be ${MAX_AUDIO_DURATION_S}s or less.`);
     return null;

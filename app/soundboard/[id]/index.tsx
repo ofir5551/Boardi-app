@@ -2,7 +2,12 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { View, Text, Alert } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { Audio } from "expo-av";
+import {
+  useAudioRecorder,
+  RecordingPresets,
+  AudioModule,
+  setAudioModeAsync,
+} from "expo-audio";
 import { useSoundboardStore } from "@/src/store/soundboardStore";
 import * as audioService from "@/src/services/audioService";
 import * as fileService from "@/src/services/fileService";
@@ -18,7 +23,7 @@ export default function SoundboardScreen() {
     useSoundboardStore();
 
   const [recordingButtonId, setRecordingButtonId] = useState<string | null>(null);
-  const recordingRef = useRef<Audio.Recording | null>(null);
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const autoStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevBoardIdRef = useRef<string | null>(null);
 
@@ -28,15 +33,12 @@ export default function SoundboardScreen() {
         clearTimeout(autoStopTimerRef.current);
         autoStopTimerRef.current = null;
       }
-      const recording = recordingRef.current;
-      if (!recording) return;
-      recordingRef.current = null;
       setRecordingButtonId(null);
       try {
-        await recording.stopAndUnloadAsync();
-        const uri = recording.getURI();
+        await recorder.stop();
+        const uri = recorder.uri;
         if (!uri) return;
-        await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+        await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
         const filename = `${generateId()}.m4a`;
         const savedUri = fileService.copyAudioFile(uri, filename);
         await updateButton(id!, buttonId, { soundUri: savedUri, label: "Recording" });
@@ -45,23 +47,19 @@ export default function SoundboardScreen() {
         Alert.alert("Error", "Could not save recording.");
       }
     },
-    [id, updateButton],
+    [id, updateButton, recorder],
   );
 
   useEffect(() => {
     if (id) setActiveBoard(id);
     return () => {
-      if (recordingRef.current) {
-        recordingRef.current.stopAndUnloadAsync().catch(() => {});
-        recordingRef.current = null;
-      }
+      recorder.stop().catch(() => {});
       if (autoStopTimerRef.current) clearTimeout(autoStopTimerRef.current);
       audioService.unloadBoard();
       clearActiveBoard();
     };
   }, [id]);
 
-  // Only reload audio when board ID changes, not on every button update
   useEffect(() => {
     if (activeBoard && activeBoard.id !== prevBoardIdRef.current) {
       prevBoardIdRef.current = activeBoard.id;
@@ -82,17 +80,15 @@ export default function SoundboardScreen() {
       router.push(`/soundboard/${id}/edit-button/${button.id}`);
       return;
     }
-    const { granted } = await Audio.requestPermissionsAsync();
+    const { granted } = await AudioModule.requestRecordingPermissionsAsync();
     if (!granted) {
       Alert.alert("Permission required", "Microphone access is needed to record.");
       return;
     }
     try {
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY,
-      );
-      recordingRef.current = recording;
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      await recorder.prepareToRecordAsync();
+      recorder.record();
       setRecordingButtonId(button.id);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       autoStopTimerRef.current = setTimeout(
@@ -105,7 +101,7 @@ export default function SoundboardScreen() {
   };
 
   const handlePressOut = async (button: SoundButton) => {
-    if (!recordingRef.current || recordingButtonId !== button.id) return;
+    if (!recordingButtonId || recordingButtonId !== button.id) return;
     await stopAndSaveRecording(button.id);
   };
 

@@ -1,7 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { View, Text, TextInput, Pressable, Alert } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
-import { Audio } from "expo-av";
+import {
+  useAudioRecorder,
+  RecordingPresets,
+  AudioModule,
+  setAudioModeAsync,
+} from "expo-audio";
 import { Ionicons } from "@expo/vector-icons";
 import { useSoundboardStore } from "@/src/store/soundboardStore";
 import * as fileService from "@/src/services/fileService";
@@ -21,20 +26,16 @@ export default function EditButtonScreen() {
   const button = activeBoard?.buttons.find((b) => b.id === buttonId);
   const [label, setLabel] = useState(button?.label ?? "");
   const [isRecording, setIsRecording] = useState(false);
-  const recordingRef = useRef<Audio.Recording | null>(null);
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const autoStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!activeBoard && id) setActiveBoard(id);
   }, [id]);
 
-  // Cleanup recording on unmount
   useEffect(() => {
     return () => {
-      if (recordingRef.current) {
-        recordingRef.current.stopAndUnloadAsync().catch(() => {});
-        recordingRef.current = null;
-      }
+      recorder.stop().catch(() => {});
       if (autoStopTimerRef.current) {
         clearTimeout(autoStopTimerRef.current);
         autoStopTimerRef.current = null;
@@ -42,40 +43,23 @@ export default function EditButtonScreen() {
     };
   }, []);
 
-  const saveRecording = useCallback(
-    async (rec: Audio.Recording) => {
-      try {
-        await rec.stopAndUnloadAsync();
-        const uri = rec.getURI();
-        if (!uri) return;
-
-        await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
-
-        const { sound } = await Audio.Sound.createAsync({ uri });
-        const status = await sound.getStatusAsync();
-        await sound.unloadAsync();
-        if (
-          status.isLoaded &&
-          status.durationMillis &&
-          status.durationMillis > MAX_AUDIO_DURATION_S * 1000
-        ) {
-          Alert.alert("Too long", `Recording must be ${MAX_AUDIO_DURATION_S}s or less.`);
-          return;
-        }
-
-        const filename = `${generateId()}.m4a`;
-        const dest = fileService.copyAudioFile(uri, filename);
-        if (button?.soundUri) fileService.deleteAudioFile(button.soundUri);
-        const newLabel = label.trim() || "Recording";
-        await updateButton(id!, buttonId!, { soundUri: dest, label: newLabel });
-        await audioService.updateButtonSound(buttonId!, dest);
-        setLabel(newLabel);
-      } catch {
-        Alert.alert("Error", "Could not save recording.");
-      }
-    },
-    [id, buttonId, button?.soundUri, label, updateButton],
-  );
+  const saveRecording = useCallback(async () => {
+    try {
+      await recorder.stop();
+      const uri = recorder.uri;
+      if (!uri) return;
+      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+      const filename = `${generateId()}.m4a`;
+      const dest = fileService.copyAudioFile(uri, filename);
+      if (button?.soundUri) fileService.deleteAudioFile(button.soundUri);
+      const newLabel = label.trim() || "Recording";
+      await updateButton(id!, buttonId!, { soundUri: dest, label: newLabel });
+      await audioService.updateButtonSound(buttonId!, dest);
+      setLabel(newLabel);
+    } catch {
+      Alert.alert("Error", "Could not save recording.");
+    }
+  }, [id, buttonId, button?.soundUri, label, updateButton, recorder]);
 
   const handleSave = async () => {
     if (id && buttonId) {
@@ -100,41 +84,31 @@ export default function EditButtonScreen() {
   };
 
   const handleRecord = async () => {
-    if (isRecording && recordingRef.current) {
+    if (isRecording) {
       if (autoStopTimerRef.current) {
         clearTimeout(autoStopTimerRef.current);
         autoStopTimerRef.current = null;
       }
-      const rec = recordingRef.current;
-      recordingRef.current = null;
       setIsRecording(false);
-      await saveRecording(rec);
+      await saveRecording();
       return;
     }
 
-    const { status } = await Audio.requestPermissionsAsync();
-    if (status !== "granted") {
+    const { granted } = await AudioModule.requestRecordingPermissionsAsync();
+    if (!granted) {
       Alert.alert("Permission needed", "Microphone access is required to record.");
       return;
     }
 
     try {
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY,
-      );
-      recordingRef.current = recording;
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      await recorder.prepareToRecordAsync();
+      recorder.record();
       setIsRecording(true);
 
       autoStopTimerRef.current = setTimeout(() => {
-        const rec = recordingRef.current;
-        if (!rec) return;
-        recordingRef.current = null;
         setIsRecording(false);
-        saveRecording(rec);
+        saveRecording();
       }, MAX_AUDIO_DURATION_S * 1000);
     } catch {
       Alert.alert("Error", "Could not start recording.");

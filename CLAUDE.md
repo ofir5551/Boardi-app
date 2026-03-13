@@ -4,6 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Keep your replies extremely concise and focus on converying the key information. No unnecessary fluff. no long code snippets.
 
+When interacting with libraries or APIs - use Context7 MCP server to fetch documentation first.
+
 ## Commands
 
 ```bash

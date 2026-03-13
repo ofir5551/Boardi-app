@@ -1,60 +1,33 @@
-import { Audio } from "expo-av";
+import { createAudioPlayer, setAudioModeAsync } from "expo-audio";
 import type { Soundboard } from "@/src/types/soundboard";
 
-const soundCache = new Map<string, Audio.Sound>();
+const uriCache = new Map<string, string>();
+const activePlayers: ReturnType<typeof createAudioPlayer>[] = [];
 
 export async function loadBoard(board: Soundboard): Promise<void> {
   await unloadBoard();
-  await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+  await setAudioModeAsync({ playsInSilentMode: true });
   for (const btn of board.buttons) {
     if (btn.soundUri) {
-      try {
-        const { sound } = await Audio.Sound.createAsync({ uri: btn.soundUri });
-        soundCache.set(btn.id, sound);
-      } catch {
-        // skip buttons with invalid audio
-      }
+      uriCache.set(btn.id, btn.soundUri);
     }
   }
 }
 
 export async function play(buttonId: string): Promise<void> {
-  const preloaded = soundCache.get(buttonId);
-  if (!preloaded) return;
-
-  // For simultaneous playback, create a new instance each tap
-  // and use the preloaded sound's URI
-  const status = await preloaded.getStatusAsync();
-  if (!status.isLoaded) return;
-
-  const { sound } = await Audio.Sound.createAsync(
-    { uri: status.uri },
-    { shouldPlay: true },
-  );
-  sound.setOnPlaybackStatusUpdate((s) => {
-    if (!s.isLoaded || s.didJustFinish) {
-      sound.unloadAsync();
-    }
-  });
+  const uri = uriCache.get(buttonId);
+  if (!uri) return;
+  const player = createAudioPlayer({ uri });
+  activePlayers.push(player);
+  player.play();
 }
 
-export async function updateButtonSound(
-  buttonId: string,
-  uri: string,
-): Promise<void> {
-  const old = soundCache.get(buttonId);
-  if (old) await old.unloadAsync().catch(() => {});
-  try {
-    const { sound } = await Audio.Sound.createAsync({ uri });
-    soundCache.set(buttonId, sound);
-  } catch {
-    soundCache.delete(buttonId);
-  }
+export async function updateButtonSound(buttonId: string, uri: string): Promise<void> {
+  uriCache.set(buttonId, uri);
 }
 
 export async function unloadBoard(): Promise<void> {
-  for (const sound of soundCache.values()) {
-    await sound.unloadAsync().catch(() => {});
-  }
-  soundCache.clear();
+  for (const p of activePlayers) p.remove();
+  activePlayers.length = 0;
+  uriCache.clear();
 }
